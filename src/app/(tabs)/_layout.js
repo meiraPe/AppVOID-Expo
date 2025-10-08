@@ -1,35 +1,34 @@
 import { Tabs } from "expo-router";
-import Foundation from "@expo/vector-icons/Foundation";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import Entypo from "@expo/vector-icons/Entypo";
-import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
+import { Ionicons } from "@expo/vector-icons";
+import { View, Text } from "react-native"
+
 
 export default function RootLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#ff7b00",
+        tabBarActiveTintColor: "#9cf",
         tabBarInactiveTintColor: "#aaa",
         tabBarStyle: {
           backgroundColor: "#080f18",
           borderTopWidth: 0,
-          height: 60,
+          height: 70,
           paddingBottom: 6,
-          paddingTop: 6,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "500",
+          paddingTop: 18,
         },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: "Home",
-          tabBarIcon: ({ color }) => (
-            <Foundation name="home" size={24} color={color} />
+          tabBarShowLabel: false,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "home" : "home-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -37,9 +36,13 @@ export default function RootLayout() {
       <Tabs.Screen
         name="marcas"
         options={{
-          title: "Categorias",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="boxes" size={20} color={color} />
+          tabBarShowLabel: false,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "pricetag" : "pricetag-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -47,22 +50,68 @@ export default function RootLayout() {
       <Tabs.Screen
         name="sacola"
         options={{
-          title: "Sacola",
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="shopping" size={24} color={color} />
+          tabBarShowLabel: false,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ width: 30, height: 30, justifyContent: "center", alignItems: "center" }}>
+              <Ionicons
+                name={focused ? "bag" : "bag-outline"}
+                size={24}
+                color={color}
+              />
+              {/* Badge */}
+              <View
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  backgroundColor: "#9cf",
+                  width: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#000", fontSize: 10, fontWeight: "bold" }}>2</Text>
+              </View>
+            </View>
+            
           ),
         }}
       />
 
       <Tabs.Screen
-        name="profile"
+        name="notifications"
         options={{
-          title: "Perfil",
-          tabBarIcon: ({ color }) => (
-            <Entypo name="user" size={24} color={color} />
+          tabBarShowLabel: false,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ width: 30, height: 30, justifyContent: "center", alignItems: "center" }}>
+              <Ionicons
+                name={focused ? "notifications" : "notifications-outline"}
+                size={24}
+                color={color}
+              />
+              {/* Badge */}
+              <View
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  backgroundColor: "#9cf",
+                  width: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#000", fontSize: 10, fontWeight: "bold" }}>2</Text>
+              </View>
+            </View>
           ),
         }}
       />
+
     </Tabs>
   );
 }
