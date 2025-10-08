@@ -10,7 +10,9 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
+  Pressable,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 
 export default function Home() {
@@ -47,30 +49,36 @@ export default function Home() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <TouchableOpacity onPress={() => router.push("/profile")}>
-          <Ionicons name="person-circle-outline" size={36} color="#fff" />
+        <TouchableOpacity onPress={() => router.push("/modal/profile")}>
+          <Ionicons name="person-circle-outline" size={38} color="#9cf" />
         </TouchableOpacity>
       </View>
 
       {/* Banner */}
-      <View style={styles.bannerContainer}>
-        <ImageBackground
-          source={require("../../../assets/logos/bannerHomeMobile.png")}
-          style={styles.bannerImage}
-          imageStyle={styles.bannerImageStyle}
-          resizeMode="cover"
-        >
-          <View style={styles.bannerOverlay}>
-            <View style={styles.bannerTextBox}>
-              <Text style={styles.bannerTitle}>
-                Os Melhores Produtos {"\n"}Você Encontra Aqui
-              </Text>
-              <TouchableOpacity style={styles.bannerButton}>
-                <Text style={styles.bannerButtonText}>Ver Mais</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ImageBackground>
+      <View style={styles.bannerWrapper}>
+        <View style={styles.bannerContainer}>
+          <ImageBackground
+            source={require("../../../assets/logos/bannerHomeMobile.png")}
+            style={styles.bannerImage}
+            resizeMode="cover"
+          >
+            <LinearGradient
+              colors={["rgba(0,0,0,0.7)", "rgba(0,0,0,0.3)", "rgba(0,0,0,0.1)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.bannerGradient}
+            >
+              <View style={styles.bannerTextBox}>
+                <Text style={styles.bannerTitle}>
+                  Os Melhores Produtos {"\n"}Você Encontra Aqui
+                </Text>
+                <TouchableOpacity onPress={() => router.push("/marcas")} style={styles.bannerButton}>
+                  <Text style={styles.bannerButtonText}>Ver Mais</Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </ImageBackground>
+        </View>
       </View>
 
       {/* Marcas */}
@@ -94,9 +102,6 @@ export default function Home() {
       {/* Sneakers em destaque */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Sneakers em Destaque</Text>
-        <TouchableOpacity>
-          <Text style={styles.sectionLink}>Ver mais</Text>
-        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -105,8 +110,11 @@ export default function Home() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.productList}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.productCard}
+          <Pressable
+            style={({ pressed }) => [
+              styles.productCard,
+              pressed && { transform: [{ scale: 0.97 }], shadowColor: "#9cf" },
+            ]}
             onPress={() => router.push(`/product/${item.id}`)}
           >
             <Image source={item.image} style={styles.productImage} />
@@ -114,7 +122,7 @@ export default function Home() {
               <Text style={styles.productName}>{item.name}</Text>
               <Text style={styles.productPrice}>{item.price}</Text>
             </View>
-          </TouchableOpacity>
+          </Pressable>
         )}
         keyExtractor={(item) => item.id.toString()}
       />
@@ -125,7 +133,7 @@ export default function Home() {
         <Text style={styles.ctaSubtitle}>
           Receba ofertas exclusivas e novidades primeiro!
         </Text>
-        <TouchableOpacity style={styles.ctaButton}>
+        <TouchableOpacity onPress={() => router.push("/modal/signin")} style={styles.ctaButton}>
           <Text style={styles.ctaButtonText}>Cadastrar-se</Text>
         </TouchableOpacity>
       </View>
@@ -150,26 +158,32 @@ const styles = StyleSheet.create({
     width: 120,
     height: 40,
   },
+
+  // Banner
+  bannerWrapper: {
+    paddingHorizontal: 16,
+    paddingBottom: "1rem"
+  },
   bannerContainer: {
     width: "100%",
     height: 280,
-    marginBottom: 30,
+    borderRadius: 16,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 5 },
+    shadowRadius: 10,
+    elevation: 10,
+    backgroundColor: "#0f1824",
   },
   bannerImage: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "flex-start",
-    width: "100%",
-  },
-  bannerImageStyle: {
     width: "100%",
     height: "100%",
   },
-  bannerOverlay: {
+  bannerGradient: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
-    width: "100%",
     justifyContent: "center",
     paddingHorizontal: 24,
   },
@@ -179,22 +193,26 @@ const styles = StyleSheet.create({
   bannerTitle: {
     fontFamily: "BebasNeue",
     color: "#fff",
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 28,
+    lineHeight: 38,
     marginBottom: 12,
   },
   bannerButton: {
-    backgroundColor: "#ffffff33",
-    paddingVertical: 6,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingVertical: 8,
+    maxWidth: 110,
+    paddingHorizontal: 25,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
   },
   bannerButtonText: {
     fontFamily: "PoppinsRegular",
     color: "#fff",
     fontSize: 13,
   },
+
+  // Marcas
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -207,18 +225,13 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 22,
   },
-  sectionLink: {
-    fontFamily: "PoppinsRegular",
-    color: "#9cf",
-    fontSize: 13,
-  },
   brandList: {
     paddingLeft: 16,
     gap: 16,
     marginBottom: 30,
   },
   brandCard: {
-    backgroundColor: "#101926",
+    backgroundColor: "#0f1824",
     borderRadius: 12,
     padding: 20,
     width: 100,
@@ -235,14 +248,16 @@ const styles = StyleSheet.create({
     width: 70,
     height: 35,
   },
+
+  // Produtos
   productList: {
     paddingLeft: 16,
     gap: 16,
     paddingBottom: 30,
   },
   productCard: {
-    backgroundColor: "#101926",
-    borderRadius: 12,
+    backgroundColor: "#0f1824",
+    borderRadius: 14,
     width: 160,
     overflow: "hidden",
     shadowColor: "#000",
@@ -269,11 +284,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 4,
   },
+
+  // Chamada final
   ctaContainer: {
-    backgroundColor: "#101926",
-    borderRadius: 12,
+    backgroundColor: "#0f1824",
+    borderRadius: 14,
     marginHorizontal: 16,
-    marginBottom: 40,
+    marginBottom: 50,
     padding: 24,
     alignItems: "center",
     shadowColor: "#000",
@@ -297,9 +314,9 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     backgroundColor: "#9cf",
-    paddingVertical: 8,
-    paddingHorizontal: 24,
-    borderRadius: 25,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    borderRadius: 30,
   },
   ctaButtonText: {
     fontFamily: "PoppinsBold",
