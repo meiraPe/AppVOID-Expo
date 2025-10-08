@@ -115,7 +115,7 @@ export default function Home() {
               styles.productCard,
               pressed && { transform: [{ scale: 0.97 }], shadowColor: "#9cf" },
             ]}
-            onPress={() => router.push(`/product/${item.id}`)}
+            onPress={() => router.push(`/marcas/${item.id}`)}
           >
             <Image source={item.image} style={styles.productImage} />
             <View style={styles.productInfo}>
