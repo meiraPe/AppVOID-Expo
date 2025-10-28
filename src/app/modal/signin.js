@@ -29,9 +29,38 @@ export default function SignIn() {
 
   if (!fontsLoaded) return null;
 
+  const handleSignUp = async () => {
+    if (!name || !email || !password) {
+      alert("Preencha todos os campos");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:3333/usuarios", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nome: name,
+          email: email,
+          senha: password,
+        }),
+      });
+
+      if (response.ok) {
+        alert("Usuário cadastrado com sucesso!");
+        router.push("/modal/login");
+      } else {
+        alert("Erro ao cadastrar. Verifique os dados.");
+      }
+    } catch (error) {
+      alert("Falha ao conectar ao servidor.");
+    }
+  };
+
   return (
     <LinearGradient colors={["#080f18", "#0f1824", "#101b2f"]} style={styles.container}>
-      {/* Header fixo */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push("/home")} style={styles.backButton}>
           <Ionicons name="arrow-back" size={26} color="#9cf" />
@@ -44,12 +73,10 @@ export default function SignIn() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.wrapper}
         >
-          {/* Card do formulário */}
           <LinearGradient
             colors={["rgba(156,204,255,0.1)", "rgba(255,255,255,0.02)"]}
             style={styles.cardContainer}
           >
-            {/* Input - Nome */}
             <View style={styles.inputGroup}>
               <Ionicons name="person-outline" size={18} color="#9cf" style={styles.iconLabel} />
               <View style={styles.inputBox}>
@@ -63,7 +90,6 @@ export default function SignIn() {
               </View>
             </View>
 
-            {/* Input - Email */}
             <View style={styles.inputGroup}>
               <Ionicons name="mail-outline" size={18} color="#9cf" style={styles.iconLabel} />
               <View style={styles.inputBox}>
@@ -77,7 +103,6 @@ export default function SignIn() {
               </View>
             </View>
 
-            {/* Input - Senha */}
             <View style={styles.inputGroup}>
               <Ionicons name="lock-closed-outline" size={18} color="#9cf" style={styles.iconLabel} />
               <View style={styles.inputBox}>
@@ -92,7 +117,6 @@ export default function SignIn() {
               </View>
             </View>
 
-            {/* Checkbox - Termos */}
             <TouchableOpacity
               onPress={() => setAgree(!agree)}
               style={styles.checkboxContainer}
@@ -107,16 +131,15 @@ export default function SignIn() {
               </Text>
             </TouchableOpacity>
 
-            {/* Botão */}
             <TouchableOpacity
               style={[styles.button, !agree && styles.buttonDisabled]}
               disabled={!agree}
+              onPress={handleSignUp}
             >
               <Text style={styles.buttonText}>Cadastrar</Text>
             </TouchableOpacity>
           </LinearGradient>
 
-          {/* Link para login */}
           <TouchableOpacity onPress={() => router.push("/modal/login")}>
             <Text style={styles.linkText}>
               Já tem uma conta? <Text style={styles.linkHighlight}>Entrar</Text>
@@ -157,7 +180,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
-    paddingTop: 220, // espaço para o header
+    paddingTop: 220,
     paddingBottom: 50,
   },
   wrapper: {
