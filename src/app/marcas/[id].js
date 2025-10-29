@@ -31,6 +31,9 @@ export default function ProductPage() {
   const [favorite, setFavorite] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
@@ -156,26 +159,122 @@ export default function ProductPage() {
           </View>
         </View>
       </ScrollView>
+      
+    {/* MODAL DE PAGAMENTO */}
+    <Modal transparent visible={modalVisible} animationType="fade">
+      <View style={styles.modalOverlay}>
+        <Animated.View
+          style={[
+            styles.paymentBox,
+            {
+              transform: [
+                {
+                  translateY: scaleAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [300, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {/* HEADER */}
+          <View style={styles.paymentHeader}>
+            <Text style={styles.paymentTitle}>Finalizar compra</Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Ionicons name="close" size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
 
-      {/* MODAL DE CONFIRMAÇÃO */}
-      <Modal transparent visible={modalVisible} animationType="fade">
-        <View style={styles.modalOverlay}>
-          <Animated.View style={[styles.modalBox, { transform: [{ scale: scaleAnim }] }]}>
-            <Ionicons name="checkmark-circle" size={80} color="#9cf" style={{ marginBottom: 10 }} />
+          {/* RESUMO */}
+          <View style={styles.paymentSummary}>
+            <Image source={product.img} style={styles.summaryImg} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.summaryName}>{product.name}</Text>
+              <Text style={styles.summaryPrice}>R$ {product.price}</Text>
+              <Text style={styles.summarySize}>Tamanho: {selectedSize}</Text>
+            </View>
+          </View>
+
+          {/* FORMAS DE PAGAMENTO */}
+          <Text style={styles.paymentSubtitle}>Formas de pagamento</Text>
+          <View style={styles.paymentOptions}>
+            {["Cartão", "Pix", "Boleto"].map((method) => (
+              <TouchableOpacity
+                key={method}
+                onPress={() => setSelectedPayment(method)}
+                style={[
+                  styles.paymentButton,
+                  selectedPayment === method && styles.paymentButtonSelected,
+                ]}
+              >
+                <Ionicons
+                  name={
+                    method === "Pix"
+                      ? "cash-outline"
+                      : method === "Cartão"
+                      ? "card-outline"
+                      : "document-text-outline"
+                  }
+                  size={20}
+                  color={selectedPayment === method ? "#000" : "#9cf"}
+                />
+                <Text
+                  style={[
+                    styles.paymentText,
+                    selectedPayment === method && styles.paymentTextSelected,
+                  ]}
+                >
+                  {method}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* BOTÃO CONFIRMAR */}
+          <TouchableOpacity
+            style={[
+              styles.confirmBtn,
+              !selectedPayment && { opacity: 0.5 },
+            ]}
+            disabled={!selectedPayment}
+            onPress={() => {
+              setShowSuccess(true);
+              setTimeout(() => {
+                setShowSuccess(false);
+                setModalVisible(false);
+                router.push("/home");
+              }, 2000);
+            }}
+          >
+            <Text style={styles.confirmText}>Confirmar compra</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+
+      {/* MODAL DE SUCESSO */}
+      {showSuccess && (
+        <View style={styles.successOverlay}>
+          <Animated.View
+            style={[
+              styles.successBox,
+              { transform: [{ scale: scaleAnim }] },
+            ]}
+          >
+            <Ionicons
+              name="checkmark-circle"
+              size={80}
+              color="#9cf"
+              style={{ marginBottom: 10 }}
+            />
             <Text style={styles.modalTitle}>Compra Confirmada!</Text>
             <Text style={styles.modalMsg}>Seu pedido foi processado com sucesso.</Text>
-            <TouchableOpacity
-              style={styles.closeBtn}
-              onPress={() => {
-                setModalVisible(false);
-                setTimeout(() => router.push("/home"), 400);
-              }}
-            >
-              <Text style={styles.closeText}>Voltar Para Home</Text>
-            </TouchableOpacity>
           </Animated.View>
         </View>
-      </Modal>
+      )}
+    </Modal>
+
+
     </LinearGradient>
   );
 }
@@ -357,4 +456,117 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#080f18",
   },
+
+  /* ========== MODAL DE PAGAMENTO =========== */
+
+  paymentBox: {
+  width: "90%",
+  backgroundColor: "#0f1624",
+  borderRadius: 20,
+  padding: 20,
+  position: "absolute",
+  bottom: 20,
+  shadowColor: "#000",
+  shadowOpacity: 0.5,
+  shadowRadius: 12,
+  elevation: 10,
+},
+paymentHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 12,
+},
+paymentTitle: {
+  color: "#fff",
+  fontFamily: "PoppinsBold",
+  fontSize: 18,
+},
+paymentSummary: {
+  flexDirection: "row",
+  backgroundColor: "rgba(255,255,255,0.05)",
+  padding: 10,
+  borderRadius: 10,
+  alignItems: "center",
+  marginBottom: 16,
+},
+summaryImg: {
+  width: 60,
+  height: 60,
+  resizeMode: "contain",
+  marginRight: 10,
+},
+summaryName: {
+  color: "#fff",
+  fontFamily: "PoppinsBold",
+  fontSize: 14,
+},
+summaryPrice: {
+  color: "#9cf",
+  fontFamily: "PoppinsBold",
+  fontSize: 13,
+},
+summarySize: {
+  color: "#ccc",
+  fontFamily: "PoppinsRegular",
+  fontSize: 12,
+},
+paymentSubtitle: {
+  color: "#fff",
+  fontFamily: "PoppinsBold",
+  fontSize: 15,
+  marginBottom: 8,
+},
+paymentOptions: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  marginBottom: 18,
+},
+paymentButton: {
+  flex: 1,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  borderWidth: 1,
+  borderColor: "#9cf",
+  borderRadius: 10,
+  paddingVertical: 10,
+  marginHorizontal: 4,
+},
+paymentButtonSelected: {
+  backgroundColor: "#9cf",
+},
+paymentText: {
+  color: "#9cf",
+  fontFamily: "PoppinsBold",
+},
+paymentTextSelected: {
+  color: "#000",
+},
+confirmBtn: {
+  backgroundColor: "#9cf",
+  borderRadius: 30,
+  paddingVertical: 12,
+  alignItems: "center",
+},
+confirmText: {
+  color: "#000",
+  fontFamily: "PoppinsBold",
+  fontSize: 15,
+},
+successOverlay: {
+  ...StyleSheet.absoluteFillObject,
+  backgroundColor: "rgba(0,0,0,0.6)",
+  justifyContent: "center",
+  alignItems: "center",
+},
+successBox: {
+  width: 260,
+  backgroundColor: "#0f1624",
+  borderRadius: 16,
+  padding: 24,
+  alignItems: "center",
+},
+
 });
