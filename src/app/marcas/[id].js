@@ -1,4 +1,13 @@
-import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, Modal, Animated, Easing } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Modal,
+  Animated,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,10 +25,13 @@ const products = [
 export default function ProductPage() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-
   const product = products.find((p) => p.id == id);
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [favorite, setFavorite] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
+  const [selectedSize, setSelectedSize] = useState(null);
+
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -43,8 +55,14 @@ export default function ProductPage() {
     );
   }
 
+  const handleAddToCart = () => {
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 1500);
+  };
+
   return (
     <LinearGradient colors={["#0a0f1a", "#131b2a"]} style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push("/marcas")} style={styles.backButton}>
           <Ionicons name="arrow-back" size={26} color="#9cf" />
@@ -52,33 +70,94 @@ export default function ProductPage() {
         <Text style={styles.title}>COMPRAR</Text>
       </View>
 
+      {/* SCROLL */}
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={styles.card}>
+          {/* NOME E IMAGEM */}
           <Text style={styles.cardTitle}>{product.name}</Text>
           <Image style={styles.productImg} source={product.img} />
+
+          {/* FAVORITO */}
+          <TouchableOpacity
+            style={styles.favoriteBtn}
+            onPress={() => setFavorite(!favorite)}
+          >
+            <Ionicons
+              name={favorite ? "heart" : "heart-outline"}
+              size={28}
+              color={favorite ? "#ff6b81" : "#9cf"}
+            />
+          </TouchableOpacity>
+
+          {/* INFORMAÇÕES */}
           <View style={styles.info}>
             <Text style={styles.price}>R$ {product.price}</Text>
             <Text style={styles.desc}>
               Explore o conforto e o estilo do {product.name}. Um clássico repaginado com design moderno e materiais premium.
             </Text>
           </View>
-        </View>
 
-        <TouchableOpacity
-          style={styles.buyBtn}
-          onPress={() => setModalVisible(true)}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={["#9cf", "#70a8ff"]}
-            style={styles.buyBtnGradient}
-          >
-            <Text style={styles.buyText}>Finalizar compra</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+          {/* ====== DIVISÓRIA ====== */}
+          <View style={styles.divider} />
+
+          {/* SELECIONAR TAMANHO */}
+          <Text style={styles.sizeTitle}>Selecione o tamanho</Text>
+          <View style={styles.sizeContainer}>
+            {["38", "39", "40", "41", "42", "43"].map((size) => (
+              <TouchableOpacity
+                key={size}
+                onPress={() => setSelectedSize(size)}
+                style={[
+                  styles.sizeButton,
+                  selectedSize === size && styles.sizeButtonSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.sizeText,
+                    selectedSize === size && styles.sizeTextSelected,
+                  ]}
+                >
+                  {size}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* ====== DIVISÓRIA ====== */}
+          <View style={styles.divider} />
+
+          {/* BOTÕES */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.cartBtn}
+              activeOpacity={0.8}
+              onPress={handleAddToCart}
+            >
+              <Ionicons name="bag" size={22} color="#000" />
+              <Text style={styles.cartText}>
+                {addedToCart ? "Adicionado!" : "Adicionar a sacola"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.buyBtn}
+              onPress={() => setModalVisible(true)}
+              activeOpacity={0.8}
+              disabled={!selectedSize}
+            >
+              <LinearGradient
+                colors={selectedSize ? ["#9cf", "#70a8ff"] : ["#6b7689", "#6b7689"]}
+                style={styles.buyBtnGradient}
+              >
+                <Text style={styles.buyText}>Finalizar compra</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
 
-      {/* Modal de confirmação */}
+      {/* MODAL DE CONFIRMAÇÃO */}
       <Modal transparent visible={modalVisible} animationType="fade">
         <View style={styles.modalOverlay}>
           <Animated.View style={[styles.modalBox, { transform: [{ scale: scaleAnim }] }]}>
@@ -92,7 +171,7 @@ export default function ProductPage() {
                 setTimeout(() => router.push("/home"), 400);
               }}
             >
-              <Text style={styles.closeText}>Voltar à Home</Text>
+              <Text style={styles.closeText}>Voltar Para Home</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -115,39 +194,44 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     padding: 8,
   },
-  title: { 
-    color: "#fff", 
-    fontSize: 28, 
-    fontFamily: "BebasNeue", 
-    flexShrink: 1 
+  title: {
+    color: "#fff",
+    fontSize: 28,
+    fontFamily: "BebasNeue",
+    flexShrink: 1,
   },
   card: {
     backgroundColor: "rgba(255,255,255,0.03)",
     margin: 24,
-    marginTop: "4rem",
     borderRadius: 16,
     padding: 16,
     shadowColor: "#000",
     shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
+    position: "relative",
   },
   cardTitle: {
     color: "#ddd",
     textAlign: "center",
-    padding: "1rem",
+    paddingVertical: 10,
     fontFamily: "BebasNeue",
     fontSize: 30,
   },
-  productImg: { 
-    width: "100%", 
-    height: 300, 
-    resizeMode: "contain", 
+  productImg: {
+    width: "100%",
+    height: 280,
+    resizeMode: "contain",
   },
-  info: { 
-    marginTop: 12, 
-    padding: 14,
+  favoriteBtn: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    padding: 8,
+    borderRadius: 50,
   },
+  info: { marginTop: 12, padding: 10 },
   price: {
     color: "#9cf",
     fontSize: 22,
@@ -162,7 +246,67 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: "PoppinsRegular",
   },
-  buyBtn: { marginHorizontal: 50, marginTop: 30, borderRadius: 30, overflow: "hidden" },
+
+  /* === LINHA DIVISÓRIA === */
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(156,204,255,0.3)",
+    marginVertical: 18,
+    alignSelf: "center",
+    width: "90%",
+  },
+
+  sizeTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontFamily: "PoppinsBold",
+    textAlign: "center",
+  },
+  sizeContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    marginTop: 10,
+    gap: 10,
+  },
+  sizeButton: {
+    borderWidth: 1,
+    borderColor: "#9cf",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: "transparent",
+  },
+  sizeButtonSelected: {
+    backgroundColor: "#9cf",
+  },
+  sizeText: {
+    color: "#9cf",
+    fontFamily: "PoppinsBold",
+  },
+  sizeTextSelected: {
+    color: "#000",
+  },
+  actionRow: {
+    flexDirection: "column",
+    gap: 12,
+    marginTop: 10,
+  },
+  cartBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#9cf",
+    borderRadius: 30,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  cartText: {
+    color: "#000",
+    fontFamily: "PoppinsBold",
+    fontSize: 15,
+  },
+  buyBtn: { marginTop: 10, borderRadius: 30, overflow: "hidden" },
   buyBtnGradient: { paddingVertical: 14, borderRadius: 30 },
   buyText: {
     color: "#000",
@@ -207,5 +351,10 @@ const styles = StyleSheet.create({
     fontFamily: "PoppinsBold",
     fontSize: 15,
   },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#080f18" },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#080f18",
+  },
 });
