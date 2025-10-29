@@ -17,7 +17,7 @@ const products = [
   { id: 1, name: "Nike Air Max Plus OG", price: "1099,99", img: require("../../../assets/products/AirMaxPlus.png") },
   { id: 2, name: "Nike Air Max DN8", price: "1299,99", img: require("../../../assets/products/Dn8.png") },
   { id: 3, name: "Air Jordan 1", price: "899,99", img: require("../../../assets/products/Jordan1.png") },
-  { id: 4, name: "Adidas Forum Low", price: "749,99", img: require("../../../assets/products/Adi2000.png") },
+  { id: 4, name: "Adidas ADI2000", price: "749,99", img: require("../../../assets/products/Adi2000.png") },
   { id: 5, name: "New Balance 1906R", price: "1.199,99", img: require("../../../assets/products/NewBalance1906.png") },
   { id: 6, name: "Air Jordan 3", price: "1.199,99", img: require("../../../assets/products/Jordan3.png") },
 ];
