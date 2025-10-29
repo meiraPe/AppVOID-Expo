@@ -78,7 +78,7 @@ export default function Favoritos() {
         ) : (
           favoritos.map((item) => (
             <View key={item.id} style={styles.card}>
-              <Image source={item.img} style={styles.imagem} resizeMode="contain" />
+              <Image source={item.img} style={styles.imagem} resizeMode="contain"/>
 
               <View style={styles.infoBox}>
                 <Text style={styles.nome}>{item.nome}</Text>
