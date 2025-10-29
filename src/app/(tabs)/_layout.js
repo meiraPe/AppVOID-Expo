@@ -1,7 +1,6 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { View, Text } from "react-native"
-
+import { View, Text } from "react-native";
 
 export default function RootLayout() {
   return (
@@ -52,13 +51,19 @@ export default function RootLayout() {
         options={{
           tabBarShowLabel: false,
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ width: 30, height: 30, justifyContent: "center", alignItems: "center" }}>
+            <View
+              style={{
+                width: 30,
+                height: 30,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Ionicons
                 name={focused ? "bag" : "bag-outline"}
                 size={24}
                 color={color}
               />
-              {/* Badge */}
               <View
                 style={{
                   position: "absolute",
@@ -72,10 +77,32 @@ export default function RootLayout() {
                   alignItems: "center",
                 }}
               >
-                <Text style={{ color: "#000", fontSize: 10, fontWeight: "bold" }}>2</Text>
+                <Text
+                  style={{
+                    color: "#000",
+                    fontSize: 10,
+                    fontWeight: "bold",
+                  }}
+                >
+                  2
+                </Text>
               </View>
             </View>
-            
+          ),
+        }}
+      />
+
+      {/* ❤️ Nova aba de Favoritos */}
+      <Tabs.Screen
+        name="favoritos"
+        options={{
+          tabBarShowLabel: false,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "heart" : "heart-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -85,13 +112,19 @@ export default function RootLayout() {
         options={{
           tabBarShowLabel: false,
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ width: 30, height: 30, justifyContent: "center", alignItems: "center" }}>
+            <View
+              style={{
+                width: 30,
+                height: 30,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Ionicons
                 name={focused ? "notifications" : "notifications-outline"}
                 size={24}
                 color={color}
               />
-              {/* Badge */}
               <View
                 style={{
                   position: "absolute",
@@ -105,13 +138,20 @@ export default function RootLayout() {
                   alignItems: "center",
                 }}
               >
-                <Text style={{ color: "#000", fontSize: 10, fontWeight: "bold" }}>2</Text>
+                <Text
+                  style={{
+                    color: "#000",
+                    fontSize: 10,
+                    fontWeight: "bold",
+                  }}
+                >
+                  2
+                </Text>
               </View>
             </View>
           ),
         }}
       />
-
     </Tabs>
   );
 }
