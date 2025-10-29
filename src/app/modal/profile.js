@@ -67,6 +67,23 @@ export default function Profile() {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={styles.optionCard}
+          onPress={() => router.push("/modal/editUser")}
+        >
+          <Ionicons name="create-outline" size={20} color="#9cf" />
+          <Text style={styles.optionText}>Editar Perfil</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.optionCard}
+          onPress={() => router.push("/modal/addCards")}
+        >
+          <Ionicons name="card-outline" size={20} color="#9cf" />
+          <Text style={styles.optionText}>Meus Cartões</Text>
+        </TouchableOpacity>
+
+
+        <TouchableOpacity
           style={[styles.optionCard, styles.logoutCard]}
           onPress={() => console.log("Logout")}
         >
