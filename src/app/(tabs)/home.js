@@ -14,8 +14,11 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Home() {
+  console.log(localStorage.getItem("userToken"));
+
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({

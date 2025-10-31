@@ -8,11 +8,30 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+
+// 🔹 AsyncStorage com fallback para Web
+let AsyncStorage;
+if (Platform.OS === "web") {
+  AsyncStorage = {
+    async setItem(key, value) {
+      localStorage.setItem(key, value);
+    },
+    async getItem(key) {
+      return localStorage.getItem(key);
+    },
+    async removeItem(key) {
+      localStorage.removeItem(key);
+    },
+  };
+} else {
+  AsyncStorage = require("@react-native-async-storage/async-storage").default;
+}
 
 export default function Login() {
   const router = useRouter();
@@ -28,14 +47,49 @@ export default function Login() {
 
   if (!fontsLoaded) return null;
 
+  // 🔹 Função de Login
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Erro", "Preencha todos os campos!");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:3333/usuarios/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, senha: password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await AsyncStorage.setItem("userToken", data.token);
+        await AsyncStorage.setItem("userId", String(data.id));
+        await AsyncStorage.setItem(
+          "usuario",
+          JSON.stringify({ nome: data.nome, email: data.email })
+        );
+
+        Alert.alert("Sucesso", "Login realizado!");
+        router.push("/home");
+      } else {
+        Alert.alert("Erro", data.mensagem || "Credenciais inválidas");
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Erro", "Não foi possível conectar ao servidor.");
+    }
+  };
+
   return (
     <LinearGradient colors={["#080f18", "#0f1824", "#101b2f"]} style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push("/home")} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={26} color="#9cf" />
+          <Ionicons name="arrow-back" size={26} color="#9cf" />
         </TouchableOpacity>
-          <Text style={styles.title}>Login</Text>
+        <Text style={styles.title}>Login</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -43,7 +97,6 @@ export default function Login() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.wrapper}
         >
-          {/* Card Container */}
           <LinearGradient
             colors={["rgba(156,204,255,0.1)", "rgba(255,255,255,0.02)"]}
             style={styles.cardContainer}
@@ -58,6 +111,7 @@ export default function Login() {
                   style={styles.input}
                   value={email}
                   onChangeText={setEmail}
+                  autoCapitalize="none"
                 />
               </View>
             </View>
@@ -77,7 +131,7 @@ export default function Login() {
               </View>
             </View>
 
-            {/* Checkbox - Termos */}
+            {/* Checkbox */}
             <TouchableOpacity
               onPress={() => setAgree(!agree)}
               style={styles.checkboxContainer}
@@ -96,6 +150,7 @@ export default function Login() {
             <TouchableOpacity
               style={[styles.button, !agree && styles.buttonDisabled]}
               disabled={!agree}
+              onPress={handleLogin}
             >
               <Text style={styles.buttonText}>Entrar</Text>
             </TouchableOpacity>
@@ -115,9 +170,7 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   wrapper: {
     flex: 1,
     justifyContent: "center",
@@ -131,7 +184,7 @@ const styles = StyleSheet.create({
     marginTop: "4rem",
     marginHorizontal: 24,
     marginBottom: 20,
-    zIndex: 10, 
+    zIndex: 10,
   },
   backButton: {
     backgroundColor: "rgba(156,204,255,0.1)",
@@ -160,12 +213,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(15,25,40,0.7)",
     gap: 40,
   },
-  inputGroup: {
-    gap: 10,
-  },
-  iconLabel: {
-    marginLeft: 4,
-  },
+  inputGroup: { gap: 10 },
+  iconLabel: { marginLeft: 4 },
   inputBox: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
@@ -174,11 +223,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  input: {
-    color: "#fff",
-    fontFamily: "PoppinsRegular",
-    fontSize: 14,
-  },
+  input: { color: "#fff", fontFamily: "PoppinsRegular", fontSize: 14 },
   checkboxContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -194,14 +239,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  checkboxChecked: {
-    backgroundColor: "#9cf",
-  },
-  checkboxText: {
-    color: "#ccc",
-    fontFamily: "PoppinsRegular",
-    fontSize: 13,
-  },
+  checkboxChecked: { backgroundColor: "#9cf" },
+  checkboxText: { color: "#ccc", fontFamily: "PoppinsRegular", fontSize: 13 },
   button: {
     backgroundColor: "#9cf",
     borderRadius: 30,
@@ -212,14 +251,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  buttonDisabled: {
-    backgroundColor: "rgba(156,204,255,0.3)",
-  },
-  buttonText: {
-    color: "#000",
-    fontFamily: "PoppinsBold",
-    fontSize: 15,
-  },
+  buttonDisabled: { backgroundColor: "rgba(156,204,255,0.3)" },
+  buttonText: { color: "#000", fontFamily: "PoppinsBold", fontSize: 15 },
   linkText: {
     color: "#aaa",
     fontFamily: "PoppinsRegular",
@@ -227,7 +260,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 24,
   },
-  linkHighlight: {
-    color: "#9cf",
-  },
+  linkHighlight: { color: "#9cf" },
 });

@@ -1,5 +1,4 @@
-// app/(tabs)/profile.js
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useFonts } from "expo-font";
 import {
   View,
@@ -7,19 +6,49 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Animated,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Profile() {
   const router = useRouter();
-
+  const [user, setUser] = useState(null);
   const [fontsLoaded] = useFonts({
     BebasNeue: require("../../../assets/fonts/BebasNeue-Regular.ttf"),
     PoppinsRegular: require("../../../assets/fonts/Poppins-Regular.ttf"),
     PoppinsBold: require("../../../assets/fonts/Poppins-Bold.ttf"),
   });
+
+  useEffect(() => {
+    const carregarUsuario = async () => {
+      try {
+        const token = await AsyncStorage.getItem("userToken");
+        if (token) {
+          const dadosUsuario = JSON.parse(await AsyncStorage.getItem("usuario"));
+          setUser(dadosUsuario || { nome: "Usuário" });
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar usuário:", error);
+      }
+    };
+    carregarUsuario();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("userToken");
+      await AsyncStorage.removeItem("usuario");
+      Alert.alert("Logout", "Você saiu da conta.");
+      setUser(null);
+      router.replace("/(tabs)/home");
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+    }
+  };
 
   if (!fontsLoaded) return null;
 
@@ -27,10 +56,7 @@ export default function Profile() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={26} color="#9cf" />
         </TouchableOpacity>
         <Text style={styles.title}>Seu Perfil</Text>
@@ -44,52 +70,57 @@ export default function Profile() {
             style={styles.avatar}
           />
         </View>
-        <Text style={styles.userName}>Olá, Usuário!</Text>
+        <Text style={styles.userName}>Olá, {user?.nome || "Usuário"}!</Text>
         <Text style={styles.userSub}>Membro desde 2025</Text>
       </View>
 
       {/* Opções */}
       <View style={styles.optionsContainer}>
-        <TouchableOpacity
-          style={styles.optionCard}
-          onPress={() => router.push("/modal/login")}
-        >
-          <Ionicons name="log-in-outline" size={20} color="#9cf" />
-          <Text style={styles.optionText}>Entrar</Text>
-        </TouchableOpacity>
+        {user ? (
+          <>
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => router.push("/modal/editUser")}
+            >
+              <Ionicons name="create-outline" size={20} color="#9cf" />
+              <Text style={styles.optionText}>Editar Perfil</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.optionCard}
-          onPress={() => router.push("/modal/signin")}
-        >
-          <Ionicons name="person-add-outline" size={20} color="#9cf" />
-          <Text style={styles.optionText}>Criar Conta</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => router.push("/modal/addCards")}
+            >
+              <Ionicons name="card-outline" size={20} color="#9cf" />
+              <Text style={styles.optionText}>Meus Cartões</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.optionCard}
-          onPress={() => router.push("/modal/editUser")}
-        >
-          <Ionicons name="create-outline" size={20} color="#9cf" />
-          <Text style={styles.optionText}>Editar Perfil</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.optionCard, styles.logoutCard]}
+              onPress={handleLogout}
+            >
+              <Ionicons name="exit-outline" size={20} color="#f55" />
+              <Text style={[styles.optionText, styles.logoutText]}>Sair</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => router.push("/modal/login")}
+            >
+              <Ionicons name="log-in-outline" size={20} color="#9cf" />
+              <Text style={styles.optionText}>Entrar</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.optionCard}
-          onPress={() => router.push("/modal/addCards")}
-        >
-          <Ionicons name="card-outline" size={20} color="#9cf" />
-          <Text style={styles.optionText}>Meus Cartões</Text>
-        </TouchableOpacity>
-
-
-        <TouchableOpacity
-          style={[styles.optionCard, styles.logoutCard]}
-          onPress={() => console.log("Logout")}
-        >
-          <Ionicons name="exit-outline" size={20} color="#f55" />
-          <Text style={[styles.optionText, styles.logoutText]}>Sair</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => router.push("/modal/signin")}
+            >
+              <Ionicons name="person-add-outline" size={20} color="#9cf" />
+              <Text style={styles.optionText}>Criar Conta</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </View>
   );
