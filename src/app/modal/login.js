@@ -68,7 +68,7 @@ export default function Login() {
         await AsyncStorage.setItem("userId", String(data.id));
         await AsyncStorage.setItem(
           "usuario",
-          JSON.stringify({ nome: data.nome, email: data.email })
+          JSON.stringify({ id: data.id, nome: data.nome, email: data.email })
         );
 
         Alert.alert("Sucesso", "Login realizado!");

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,18 +10,39 @@ import {
   ScrollView,
   Modal,
   Animated,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 
+// AsyncStorage com fallback para Web
+let AsyncStorage;
+if (Platform.OS === "web") {
+  AsyncStorage = {
+    async setItem(key, value) {
+      localStorage.setItem(key, value);
+    },
+    async getItem(key) {
+      return localStorage.getItem(key);
+    },
+    async removeItem(key) {
+      localStorage.removeItem(key);
+    },
+  };
+} else {
+  AsyncStorage = require("@react-native-async-storage/async-storage").default;
+}
+
 export default function EditUser() {
   const router = useRouter();
 
-  const [name, setName] = useState("Usuário Exemplo");
-  const [email, setEmail] = useState("usuario@email.com");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [userId, setUserId] = useState(null);
+  const [usuario, setUsuario] = useState(null);
 
   const [fontsLoaded] = useFonts({
     BebasNeue: require("../../../assets/fonts/BebasNeue-Regular.ttf"),
@@ -32,62 +53,86 @@ export default function EditUser() {
   const [popupVisible, setPopupVisible] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
 
-  const salvarAlteracoes = () => {
-    // Simula atualização de dados
-    setPopupVisible(true);
+  useEffect(() => {
+    const carregarUsuario = async () => {
+      try {
+        const usuarioStr = await AsyncStorage.getItem("usuario");
+        if (!usuarioStr) {
+          console.error("Nenhum usuário encontrado no AsyncStorage");
+          return;
+        }
 
-    // Animação de fade-in
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
+        const usuarioObj = JSON.parse(usuarioStr);
+        console.log("Usuario carregado:", usuarioObj);
 
-    // Fecha automaticamente após 2,5 segundos
-    setTimeout(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => setPopupVisible(false));
-    }, 2500);
-  };
+        setUsuario(usuarioObj);
+        setName(usuarioObj.nome || "");
+        setEmail(usuarioObj.email || "");
+        setUserId(usuarioObj.id || null);
+      } catch (error) {
+        console.error("Erro ao carregar usuário:", error);
+      }
+    };
+    carregarUsuario();
+  }, []);
 
-  if (!fontsLoaded) return null;
-
-  const handleSave = async () => {
-    if (!name || !email || !password) {
-      Alert.alert("Campos incompletos", "Preencha todos os campos antes de salvar.");
+  const salvarAlteracoes = async () => {
+    if (!userId || !usuario?.token) {
+      console.error("User ID ou token inválido:", userId, usuario?.token);
+      Alert.alert("Erro", "Usuário não encontrado ou token inválido. Tente reiniciar o app.");
       return;
     }
 
+    const body = { nome: name, email };
+    if (password) body.senha = password;
+
+    console.log("Salvando alterações com:", { userId, token: usuario.token, name, email });
+
     try {
-      const response = await fetch(`http://localhost:3333/usuarios/1`, {
+      const response = await fetch(`http://localhost:3333/usuarios/${userId}`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${usuario.token}`,
         },
-        body: JSON.stringify({
-          nome: name,
-          email: email,
-          senha: password,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
-        Alert.alert("Sucesso", "Perfil atualizado com sucesso!");
-        router.back();
+        const usuarioAtualizado = { ...usuario, nome: name, email };
+        await AsyncStorage.setItem("usuario", JSON.stringify(usuarioAtualizado));
+        setUsuario(usuarioAtualizado);
+
+        setPopupVisible(true);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+
+        setTimeout(() => {
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => setPopupVisible(false));
+        }, 2500);
+
       } else {
-        Alert.alert("Erro", "Não foi possível atualizar o perfil.");
+        const data = await response.json();
+        console.error("Erro PUT:", data);
+        Alert.alert("Erro", data?.error || "Não foi possível atualizar o perfil.");
       }
     } catch (error) {
+      console.error("Falha no fetch:", error);
       Alert.alert("Erro", "Falha ao conectar com o servidor.");
     }
   };
 
+  if (!fontsLoaded) return null;
+
   return (
     <LinearGradient colors={["#080f18", "#0f1824", "#101b2f"]} style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push("/home")} style={styles.backButton}>
           <Ionicons name="arrow-back" size={26} color="#9cf" />
@@ -95,7 +140,6 @@ export default function EditUser() {
         <Text style={styles.title}>Editar Usuário</Text>
       </View>
 
-      {/* Formulário */}
       <ScrollView contentContainerStyle={styles.scrollWrapper}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -105,7 +149,6 @@ export default function EditUser() {
             colors={["rgba(156,204,255,0.1)", "rgba(255,255,255,0.02)"]}
             style={styles.cardContainer}
           >
-            {/* Nome */}
             <View style={styles.inputGroup}>
               <Ionicons name="person-outline" size={18} color="#9cf" style={styles.iconLabel} />
               <View style={styles.inputBox}>
@@ -119,7 +162,6 @@ export default function EditUser() {
               </View>
             </View>
 
-            {/* E-mail */}
             <View style={styles.inputGroup}>
               <Ionicons name="mail-outline" size={18} color="#9cf" style={styles.iconLabel} />
               <View style={styles.inputBox}>
@@ -129,11 +171,11 @@ export default function EditUser() {
                   style={styles.input}
                   value={email}
                   onChangeText={setEmail}
+                  autoCapitalize="none"
                 />
               </View>
             </View>
 
-            {/* Senha */}
             <View style={styles.inputGroup}>
               <Ionicons name="lock-closed-outline" size={18} color="#9cf" style={styles.iconLabel} />
               <View style={styles.inputBox}>
@@ -148,13 +190,11 @@ export default function EditUser() {
               </View>
             </View>
 
-            {/* Botão Salvar */}
             <TouchableOpacity style={styles.botaoSalvar} onPress={salvarAlteracoes}>
               <Ionicons name="checkmark-circle-outline" size={20} color="#000" />
               <Text style={styles.textoBotao}>Salvar Alterações</Text>
             </TouchableOpacity>
 
-            {/* Pop-up de confirmação */}
             <Modal transparent visible={popupVisible} animationType="fade">
               <View style={styles.modalOverlay}>
                 <Animated.View style={[styles.popupBox, { opacity: fadeAnim }]}>
@@ -163,7 +203,6 @@ export default function EditUser() {
                 </Animated.View>
               </View>
             </Modal>
-
           </LinearGradient>
         </KeyboardAvoidingView>
       </ScrollView>
@@ -172,9 +211,7 @@ export default function EditUser() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     position: "absolute",
     flexDirection: "row",
@@ -202,9 +239,7 @@ const styles = StyleSheet.create({
     paddingTop: 220,
     paddingBottom: 50,
   },
-  wrapper: {
-    flex: 1,
-  },
+  wrapper: { flex: 1 },
   cardContainer: {
     width: "95%",
     maxWidth: 400,
@@ -220,12 +255,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(15,25,40,0.7)",
     gap: 30,
   },
-  inputGroup: {
-    gap: 10,
-  },
-  iconLabel: {
-    marginLeft: 4,
-  },
+  inputGroup: { gap: 10 },
+  iconLabel: { marginLeft: 4 },
   inputBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -237,22 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  input: {
-    flex: 1,
-    color: "#fff",
-    fontFamily: "PoppinsRegular",
-    fontSize: 14,
-  },
-  button: {
-    backgroundColor: "#9cf",
-    borderRadius: 30,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 10,
-    shadowColor: "#9cf",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
+  input: { flex: 1, color: "#fff", fontFamily: "PoppinsRegular", fontSize: 14 },
   botaoSalvar: {
     flexDirection: "row",
     alignItems: "center",
@@ -263,17 +279,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
     gap: 8,
   },
-  textoBotao: {
-    color: "#000",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  textoBotao: { color: "#000", fontWeight: "700", fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center" },
   popupBox: {
     backgroundColor: "#0d1a2b",
     padding: 24,
@@ -283,9 +290,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#9cf",
   },
-  popupText: {
-    color: "#9cf",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  popupText: { color: "#9cf", fontSize: 16, fontWeight: "600" },
 });
