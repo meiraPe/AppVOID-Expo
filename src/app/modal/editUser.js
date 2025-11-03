@@ -68,6 +68,7 @@ export default function EditUser() {
         setUsuario(usuarioObj);
         setName(usuarioObj.nome || "");
         setEmail(usuarioObj.email || "");
+        console.log("User ID definido como:", usuarioObj.id);
         setUserId(usuarioObj.id || null);
       } catch (error) {
         console.error("Erro ao carregar usuário:", error);
@@ -77,6 +78,7 @@ export default function EditUser() {
   }, []);
 
   const salvarAlteracoes = async () => {
+    console.log(userId, usuario)
     if (!userId || !usuario?.token) {
       console.error("User ID ou token inválido:", userId, usuario?.token);
       Alert.alert("Erro", "Usuário não encontrado ou token inválido. Tente reiniciar o app.");

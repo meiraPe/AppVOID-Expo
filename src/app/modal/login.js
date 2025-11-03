@@ -64,11 +64,9 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        await AsyncStorage.setItem("userToken", data.token);
-        await AsyncStorage.setItem("userId", String(data.id));
         await AsyncStorage.setItem(
           "usuario",
-          JSON.stringify({ id: data.id, nome: data.nome, email: data.email })
+          JSON.stringify({ id: data.id, nome: data.nome, email: data.email, token: data.token })
         );
 
         Alert.alert("Sucesso", "Login realizado!");

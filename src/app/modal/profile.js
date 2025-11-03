@@ -24,10 +24,12 @@ export default function Profile() {
   useEffect(() => {
     const carregarUsuario = async () => {
       try {
-        const token = await AsyncStorage.getItem("userToken");
-        if (token) {
-          const dadosUsuario = JSON.parse(await AsyncStorage.getItem("usuario"));
-          setUser(dadosUsuario || { nome: "Usuário" });
+        const usuarioText = await AsyncStorage.getItem("usuario");
+        const usuario = await JSON.parse(usuarioText);
+        console.log("Usuário carregado:", usuario);
+
+        if (usuario?.token) {
+          setUser(usuario?.nome || "Usuário");
         } else {
           setUser(null);
         }
@@ -40,7 +42,6 @@ export default function Profile() {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem("userToken");
       await AsyncStorage.removeItem("usuario");
       Alert.alert("Logout", "Você saiu da conta.");
       setUser(null);
@@ -70,7 +71,7 @@ export default function Profile() {
             style={styles.avatar}
           />
         </View>
-        <Text style={styles.userName}>Olá, {user?.nome || "Usuário"}!</Text>
+        <Text style={styles.userName}>Olá, {user || "Usuário"}!</Text>
         <Text style={styles.userSub}>Membro desde 2025</Text>
       </View>
 

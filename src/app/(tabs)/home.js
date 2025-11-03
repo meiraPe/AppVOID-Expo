@@ -17,7 +17,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Home() {
-  console.log(localStorage.getItem("userToken"));
+  console.log(localStorage.getItem("usuario"));
 
   const router = useRouter();
 
