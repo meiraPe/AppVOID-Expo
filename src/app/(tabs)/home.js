@@ -104,7 +104,7 @@ export default function Home() {
 
       {/* Sneakers em destaque */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Sneakers em Destaque</Text>
+        <Text style={styles.sectionTitle}>Produtos Nike em Destaque</Text>
       </View>
 
       <FlatList

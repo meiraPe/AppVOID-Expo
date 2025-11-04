@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,35 +6,63 @@ import {
   StyleSheet,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 
-// Lista de marcas
-const brands = [
-  { id: 1, name: "nike", logo: require("../../../assets/brands/nike.png") },
-  { id: 2, name: "adidas", logo: require("../../../assets/brands/adidas.png") },
-  { id: 3, name: "jordan", logo: require("../../../assets/brands/jordan.png") },
-  { id: 4, name: "newbalance", logo: require("../../../assets/brands/newbalance.png") },
-];
-
-// Mock de produtos
-const products = [
-  { id: 1, brand: "nike", name: "Nike Air Max Plus OG", price: "1099,99", img: require("../../../assets/products/AirMaxPlus.png") },
-  { id: 2, brand: "nike", name: "Nike Air Max DN8", price: "1299,99", img: require("../../../assets/products/Dn8.png") },
-  { id: 3, brand: "jordan", name: "Air Jordan 1", price: "899,99", img: require("../../../assets/products/Jordan1.png") },
-  { id: 4, brand: "adidas", name: "Adidas Forum Low", price: "749,99", img: require("../../../assets/products/Adi2000.png") },
-  { id: 5, brand: "newbalance", name: "New Balance 1906R", price: "1.199,99", img: require("../../../assets/products/NewBalance1906.png") },
-  { id: 6, brand: "jordan", name: "Air Jordan 3", price: "1.199,99", img: require("../../../assets/products/Jordan3.png") },
-];
-
 export default function Marcas() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState("nike");
+  const [selectedBrand, setSelectedBrand] = useState(null);
+  const [brands, setBrands] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredProducts = products.filter((p) => p.brand === selectedBrand);
+  // Função para carregar marcas do backend
+  const fetchMarcas = async () => {
+    try {
+      const response = await fetch("http://localhost:3333/marcas");
+      const data = await response.json();
+      setBrands(data);
+      if (data.length > 0) setSelectedBrand(data[0].nome.toLowerCase());
+    } catch (error) {
+      console.error("Erro ao carregar marcas:", error);
+    }
+  };
+
+  // Função para carregar produtos do backend
+  const fetchProdutos = async () => {
+    try {
+      const response = await fetch("http://localhost:3333/produtos");
+      const data = await response.json();
+      setProducts(data);
+    } catch (error) {
+      console.error("Erro ao carregar produtos:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMarcas();
+    fetchProdutos();
+  }, []);
+
+  const filteredProducts = products.filter(
+    (p) =>
+      p.marca &&
+      p.marca.nome.toLowerCase() === selectedBrand
+  );
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color="#9cf" />
+      </View>
+    );
+  }
 
   return (
     <LinearGradient colors={["#080f18", "#0f1824"]} style={styles.container}>
@@ -63,14 +91,14 @@ export default function Marcas() {
           {brands.map((brand) => (
             <TouchableOpacity
               key={brand.id}
-              onPress={() => setSelectedBrand(brand.name)}
+              onPress={() => setSelectedBrand(brand.nome.toLowerCase())}
               style={styles.brandLogoWrapper}
             >
               <Image
-                source={brand.logo}
+                source={{ uri: brand.imagemUrl }}
                 style={[
                   styles.brandLogo,
-                  selectedBrand === brand.name && styles.activeBrandLogo
+                  selectedBrand === brand.nome.toLowerCase() && styles.activeBrandLogo
                 ]}
               />
             </TouchableOpacity>
@@ -93,27 +121,25 @@ export default function Marcas() {
         )}
 
         {/* Descrição da marca */}
-        <View style={styles.brandInfo}>
-          <Text style={styles.brandTitle}>{selectedBrand.toUpperCase()}</Text>
-          <Text style={styles.brandDescription}>
-            {selectedBrand === "nike" &&
-              "Fundada em 1964 como Blue Ribbon Sports, a Nike é um ícone global de inovação esportiva e cultural."}
-            {selectedBrand === "adidas" &&
-              "A Adidas, fundada em 1949 na Alemanha, é sinônimo de performance e estilo urbano."}
-            {selectedBrand === "jordan" &&
-              "Criada em parceria com Michael Jordan, a Jordan Brand é referência em design e cultura sneaker."}
-            {selectedBrand === "newbalance" &&
-              "A New Balance combina conforto e tradição, sendo reconhecida por seus tênis casuais e esportivos."}
-          </Text>
-        </View>
+        {selectedBrand && (
+          <View style={styles.brandInfo}>
+            <Text style={styles.brandTitle}>{selectedBrand.toUpperCase()}</Text>
+            <Text style={styles.brandDescription}>
+              {
+                brands.find((b) => b.nome.toLowerCase() === selectedBrand)?.descricao ||
+                "Sem descrição disponível."
+              }
+            </Text>
+          </View>
+        )}
 
         {/* Produtos */}
         <View style={styles.products}>
           {filteredProducts.map((product) => (
             <View key={product.id} style={styles.card}>
-              <Image source={product.img} style={styles.productImg} />
-              <Text style={styles.productName}>{product.name}</Text>
-              <Text style={styles.price}>R$ {product.price}</Text>
+              <Image source={{ uri: product.imagem1Url }} style={styles.productImg} />
+              <Text style={styles.productName}>{product.nome}</Text>
+              <Text style={styles.price}>R$ {product.preco}</Text>
               <TouchableOpacity
                 style={styles.buyBtn}
                 onPress={() => router.push(`/marcas/${product.id}`)}
@@ -122,6 +148,12 @@ export default function Marcas() {
               </TouchableOpacity>
             </View>
           ))}
+
+          {filteredProducts.length === 0 && (
+            <Text style={{ color: "#9cf", textAlign: "center", marginTop: 30 }}>
+              Nenhum produto encontrado para esta marca.
+            </Text>
+          )}
         </View>
       </ScrollView>
     </LinearGradient>
@@ -159,48 +191,28 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: "#9cf",
   },
-
-  // Barra de marcas
- brandsContainer: {
-  justifyContent: "center",   // centraliza horizontalmente
-  alignItems: "center",
-  paddingHorizontal: 10,      // evita corte do glow nas extremidades
-  gap: 8,                     // espaçamento entre os logos
-  marginVertical: 20,          // distância do header
-},
-
-brandLogoWrapper: {
-  marginHorizontal: 10,        // separação mínima entre os logos
-},
-
-brandLogo: {
-  width: 100,
-  height: 90,
-  resizeMode: "center",
-},
-
-activeBrandLogo: {
-  shadowColor: "#9cf",
-  shadowOffset: { width: 0, height: 0 },
-  shadowOpacity: 0.9,
-  shadowRadius: 8,
-  elevation: 5,
-},
-
-glowEffect: {
-  position: "absolute",
-  width: 60,
-  height: 60,
-  borderRadius: 30,
-  backgroundColor: "#9cf",
-  opacity: 0.4,
-  shadowColor: "#9cf",
-  shadowOffset: { width: 0, height: 0 },
-  shadowOpacity: 0.9,
-  shadowRadius: 20,
-  elevation: 10,
-},
-
+  brandsContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    gap: 8,
+    marginVertical: 20,
+  },
+  brandLogoWrapper: {
+    marginHorizontal: 10,
+  },
+  brandLogo: {
+    width: 100,
+    height: 90,
+    resizeMode: "contain",
+  },
+  activeBrandLogo: {
+    shadowColor: "#9cf",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    elevation: 5,
+  },
   sidebar: {
     backgroundColor: "rgba(156,204,255,0.1)",
     margin: 20,

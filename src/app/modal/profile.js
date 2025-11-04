@@ -51,6 +51,36 @@ export default function Profile() {
     }
   };
 
+  const deletarConta = async () => {
+    try {
+      const usuarioText = await AsyncStorage.getItem("usuario");
+      const usuario = await JSON.parse(usuarioText);
+      
+      if (!usuario?.token) {
+        Alert.alert("Erro", "Você precisa estar logado para deletar a conta.");
+        return;
+      }
+      const response = await fetch(`http://localhost:3333/usuarios/${usuario.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${usuario.token}`,
+        },
+      });
+      if (response.ok) {
+        await AsyncStorage.removeItem("usuario");
+        Alert.alert("Conta Deletada", "Sua conta foi deletada com sucesso.");
+        setUser(null);
+        router.replace("/(tabs)/home");
+      } else {
+        const data = await response.json();
+        Alert.alert("Erro", data.mensagem || "Não foi possível deletar a conta.");
+      }
+    } catch (error) {
+      console.error("Erro ao deletar conta:", error);
+      Alert.alert("Erro", "Ocorreu um erro ao tentar deletar a conta.");
+    }
+  };
+
   if (!fontsLoaded) return null;
 
   return (
@@ -101,6 +131,14 @@ export default function Profile() {
             >
               <Ionicons name="exit-outline" size={20} color="#f55" />
               <Text style={[styles.optionText, styles.logoutText]}>Sair</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.optionCard, styles.logoutCard]}
+              onPress={deletarConta}
+            >
+              <Ionicons name="trash-outline" size={20} color="#f55" />
+              <Text style={[styles.optionText, styles.logoutText]}>Excluir Conta</Text>
             </TouchableOpacity>
           </>
         ) : (

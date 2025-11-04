@@ -7,35 +7,44 @@ import {
   ScrollView,
   Modal,
   Animated,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState, useRef, useEffect } from "react";
 
-const products = [
-  { id: 1, name: "Nike Air Max Plus OG", price: "1099,99", img: require("../../../assets/products/AirMaxPlus.png") },
-  { id: 2, name: "Nike Air Max DN8", price: "1299,99", img: require("../../../assets/products/Dn8.png") },
-  { id: 3, name: "Air Jordan 1", price: "899,99", img: require("../../../assets/products/Jordan1.png") },
-  { id: 4, name: "Adidas ADI2000", price: "749,99", img: require("../../../assets/products/Adi2000.png") },
-  { id: 5, name: "New Balance 1906R", price: "1.199,99", img: require("../../../assets/products/NewBalance1906.png") },
-  { id: 6, name: "Air Jordan 3", price: "1.199,99", img: require("../../../assets/products/Jordan3.png") },
-];
-
 export default function ProductPage() {
   const { id } = useLocalSearchParams();
-  const router = useRouter();
-  const product = products.find((p) => p.id == id);
 
-  const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
+
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [favorite, setFavorite] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-
   const scaleAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const res = await fetch(`http://localhost:3333/produtos/${id}`);
+        const data = await res.json();
+        setProduct(data);
+      } catch (error) {
+        console.error("Erro ao buscar produto:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
+  }, [id]);
 
   useEffect(() => {
     if (modalVisible) {
@@ -50,6 +59,77 @@ export default function ProductPage() {
     }
   }, [modalVisible]);
 
+  const usuarioLocal = localStorage.getItem("usuario");
+  const usuario = JSON.parse(usuarioLocal)
+  const usuarioId = usuario?.id
+
+  const handleCart = async () => {
+    try {
+      if (!addedToCart) {
+        const res = await fetch(`http://localhost:3333/sacolas/${usuarioId}/itens`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            produtoId: Number(id),
+            quantidade: 1,
+          }),
+        })
+
+        if (res.ok)
+          setAddedToCart(true)
+          console.log('Adicionado à sacola');
+      } else {
+        const res = await fetch(`http://localhost:3333/sacolas/${usuarioId}/itens/${id}`, {
+          method: "DELETE",
+        })
+
+        if (res.ok)
+          setAddedToCart(false)
+        console.log('Removido da sacola');
+      }
+    } catch (error) {
+      console.log("Erro ao atualizar sacola:", error)
+    }
+  }
+
+  const handleFavorite = async () => {
+    try {
+      if (favorite) {
+        await fetch(`http://localhost:3333/favoritos`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usuarioId,
+            produtoId: Number(id),
+          }),
+        });
+
+        setFavorite(false);
+      } else {
+        await fetch(`http://localhost:3333/favoritos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usuarioId,
+            produtoId: Number(id),
+          }),
+        });
+
+        setFavorite(true);
+      }
+    } catch (error) {
+      console.log("Erro ao atualizar favoritos:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#9cf" />
+      </View>
+    );
+  }
+
   if (!product) {
     return (
       <View style={styles.center}>
@@ -57,11 +137,6 @@ export default function ProductPage() {
       </View>
     );
   }
-
-  const handleAddToCart = () => {
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 1500);
-  };
 
   return (
     <LinearGradient colors={["#0a0f1a", "#131b2a"]} style={styles.container}>
@@ -73,18 +148,13 @@ export default function ProductPage() {
         <Text style={styles.title}>COMPRAR</Text>
       </View>
 
-      {/* SCROLL */}
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={styles.card}>
-          {/* NOME E IMAGEM */}
-          <Text style={styles.cardTitle}>{product.name}</Text>
-          <Image style={styles.productImg} source={product.img} />
+          <Text style={styles.cardTitle}>{product.nome}</Text>
+          <Image style={styles.productImg} source={{ uri: product.imagem1Url }} />
 
           {/* FAVORITO */}
-          <TouchableOpacity
-            style={styles.favoriteBtn}
-            onPress={() => setFavorite(!favorite)}
-          >
+          <TouchableOpacity style={styles.favoriteBtn} onPress={handleFavorite}>
             <Ionicons
               name={favorite ? "heart" : "heart-outline"}
               size={28}
@@ -92,18 +162,14 @@ export default function ProductPage() {
             />
           </TouchableOpacity>
 
-          {/* INFORMAÇÕES */}
+          {/* INFO */}
           <View style={styles.info}>
-            <Text style={styles.price}>R$ {product.price}</Text>
-            <Text style={styles.desc}>
-              Explore o conforto e o estilo do {product.name}. Um clássico repaginado com design moderno e materiais premium.
-            </Text>
+            <Text style={styles.price}>R$ {product.preco}</Text>
+            <Text style={styles.desc}>{product.descricao}</Text>
           </View>
 
-          {/* ====== DIVISÓRIA ====== */}
           <View style={styles.divider} />
 
-          {/* SELECIONAR TAMANHO */}
           <Text style={styles.sizeTitle}>Selecione o tamanho</Text>
           <View style={styles.sizeContainer}>
             {["38", "39", "40", "41", "42", "43"].map((size) => (
@@ -127,19 +193,14 @@ export default function ProductPage() {
             ))}
           </View>
 
-          {/* ====== DIVISÓRIA ====== */}
           <View style={styles.divider} />
 
           {/* BOTÕES */}
           <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={styles.cartBtn}
-              activeOpacity={0.8}
-              onPress={handleAddToCart}
-            >
+            <TouchableOpacity style={styles.cartBtn} activeOpacity={0.8} onPress={handleCart}>
               <Ionicons name="bag" size={22} color="#000" />
               <Text style={styles.cartText}>
-                {addedToCart ? "Adicionado!" : "Adicionar a sacola"}
+                {addedToCart ? "Remover da sacola" : "Adicionar à sacola"}
               </Text>
             </TouchableOpacity>
 
@@ -159,122 +220,6 @@ export default function ProductPage() {
           </View>
         </View>
       </ScrollView>
-      
-    {/* MODAL DE PAGAMENTO */}
-    <Modal transparent visible={modalVisible} animationType="fade">
-      <View style={styles.modalOverlay}>
-        <Animated.View
-          style={[
-            styles.paymentBox,
-            {
-              transform: [
-                {
-                  translateY: scaleAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [300, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          {/* HEADER */}
-          <View style={styles.paymentHeader}>
-            <Text style={styles.paymentTitle}>Finalizar compra</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Ionicons name="close" size={22} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* RESUMO */}
-          <View style={styles.paymentSummary}>
-            <Image source={product.img} style={styles.summaryImg} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.summaryName}>{product.name}</Text>
-              <Text style={styles.summaryPrice}>R$ {product.price}</Text>
-              <Text style={styles.summarySize}>Tamanho: {selectedSize}</Text>
-            </View>
-          </View>
-
-          {/* FORMAS DE PAGAMENTO */}
-          <Text style={styles.paymentSubtitle}>Formas de pagamento</Text>
-          <View style={styles.paymentOptions}>
-            {["Cartão", "Pix", "Boleto"].map((method) => (
-              <TouchableOpacity
-                key={method}
-                onPress={() => setSelectedPayment(method)}
-                style={[
-                  styles.paymentButton,
-                  selectedPayment === method && styles.paymentButtonSelected,
-                ]}
-              >
-                <Ionicons
-                  name={
-                    method === "Pix"
-                      ? "cash-outline"
-                      : method === "Cartão"
-                      ? "card-outline"
-                      : "document-text-outline"
-                  }
-                  size={20}
-                  color={selectedPayment === method ? "#000" : "#9cf"}
-                />
-                <Text
-                  style={[
-                    styles.paymentText,
-                    selectedPayment === method && styles.paymentTextSelected,
-                  ]}
-                >
-                  {method}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* BOTÃO CONFIRMAR */}
-          <TouchableOpacity
-            style={[
-              styles.confirmBtn,
-              !selectedPayment && { opacity: 0.5 },
-            ]}
-            disabled={!selectedPayment}
-            onPress={() => {
-              setShowSuccess(true);
-              setTimeout(() => {
-                setShowSuccess(false);
-                setModalVisible(false);
-                router.push("/home");
-              }, 2000);
-            }}
-          >
-            <Text style={styles.confirmText}>Confirmar compra</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-
-      {/* MODAL DE SUCESSO */}
-      {showSuccess && (
-        <View style={styles.successOverlay}>
-          <Animated.View
-            style={[
-              styles.successBox,
-              { transform: [{ scale: scaleAnim }] },
-            ]}
-          >
-            <Ionicons
-              name="checkmark-circle"
-              size={80}
-              color="#9cf"
-              style={{ marginBottom: 10 }}
-            />
-            <Text style={styles.modalTitle}>Compra Confirmada!</Text>
-            <Text style={styles.modalMsg}>Seu pedido foi processado com sucesso.</Text>
-          </Animated.View>
-        </View>
-      )}
-    </Modal>
-
-
     </LinearGradient>
   );
 }
@@ -460,113 +405,113 @@ const styles = StyleSheet.create({
   /* ========== MODAL DE PAGAMENTO =========== */
 
   paymentBox: {
-  width: "90%",
-  backgroundColor: "#0f1624",
-  borderRadius: 20,
-  padding: 20,
-  position: "absolute",
-  bottom: 20,
-  shadowColor: "#000",
-  shadowOpacity: 0.5,
-  shadowRadius: 12,
-  elevation: 10,
-},
-paymentHeader: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: 12,
-},
-paymentTitle: {
-  color: "#fff",
-  fontFamily: "PoppinsBold",
-  fontSize: 18,
-},
-paymentSummary: {
-  flexDirection: "row",
-  backgroundColor: "rgba(255,255,255,0.05)",
-  padding: 10,
-  borderRadius: 10,
-  alignItems: "center",
-  marginBottom: 16,
-},
-summaryImg: {
-  width: 60,
-  height: 60,
-  resizeMode: "contain",
-  marginRight: 10,
-},
-summaryName: {
-  color: "#fff",
-  fontFamily: "PoppinsBold",
-  fontSize: 14,
-},
-summaryPrice: {
-  color: "#9cf",
-  fontFamily: "PoppinsBold",
-  fontSize: 13,
-},
-summarySize: {
-  color: "#ccc",
-  fontFamily: "PoppinsRegular",
-  fontSize: 12,
-},
-paymentSubtitle: {
-  color: "#fff",
-  fontFamily: "PoppinsBold",
-  fontSize: 15,
-  marginBottom: 8,
-},
-paymentOptions: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  marginBottom: 18,
-},
-paymentButton: {
-  flex: 1,
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  borderWidth: 1,
-  borderColor: "#9cf",
-  borderRadius: 10,
-  paddingVertical: 10,
-  marginHorizontal: 4,
-},
-paymentButtonSelected: {
-  backgroundColor: "#9cf",
-},
-paymentText: {
-  color: "#9cf",
-  fontFamily: "PoppinsBold",
-},
-paymentTextSelected: {
-  color: "#000",
-},
-confirmBtn: {
-  backgroundColor: "#9cf",
-  borderRadius: 30,
-  paddingVertical: 12,
-  alignItems: "center",
-},
-confirmText: {
-  color: "#000",
-  fontFamily: "PoppinsBold",
-  fontSize: 15,
-},
-successOverlay: {
-  ...StyleSheet.absoluteFillObject,
-  backgroundColor: "rgba(0,0,0,0.6)",
-  justifyContent: "center",
-  alignItems: "center",
-},
-successBox: {
-  width: 260,
-  backgroundColor: "#0f1624",
-  borderRadius: 16,
-  padding: 24,
-  alignItems: "center",
-},
+    width: "90%",
+    backgroundColor: "#0f1624",
+    borderRadius: 20,
+    padding: 20,
+    position: "absolute",
+    bottom: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  paymentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  paymentTitle: {
+    color: "#fff",
+    fontFamily: "PoppinsBold",
+    fontSize: 18,
+  },
+  paymentSummary: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    padding: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  summaryImg: {
+    width: 60,
+    height: 60,
+    resizeMode: "contain",
+    marginRight: 10,
+  },
+  summaryName: {
+    color: "#fff",
+    fontFamily: "PoppinsBold",
+    fontSize: 14,
+  },
+  summaryPrice: {
+    color: "#9cf",
+    fontFamily: "PoppinsBold",
+    fontSize: 13,
+  },
+  summarySize: {
+    color: "#ccc",
+    fontFamily: "PoppinsRegular",
+    fontSize: 12,
+  },
+  paymentSubtitle: {
+    color: "#fff",
+    fontFamily: "PoppinsBold",
+    fontSize: 15,
+    marginBottom: 8,
+  },
+  paymentOptions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 18,
+  },
+  paymentButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#9cf",
+    borderRadius: 10,
+    paddingVertical: 10,
+    marginHorizontal: 4,
+  },
+  paymentButtonSelected: {
+    backgroundColor: "#9cf",
+  },
+  paymentText: {
+    color: "#9cf",
+    fontFamily: "PoppinsBold",
+  },
+  paymentTextSelected: {
+    color: "#000",
+  },
+  confirmBtn: {
+    backgroundColor: "#9cf",
+    borderRadius: 30,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  confirmText: {
+    color: "#000",
+    fontFamily: "PoppinsBold",
+    fontSize: 15,
+  },
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  successBox: {
+    width: 260,
+    backgroundColor: "#0f1624",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+  },
 
 });
