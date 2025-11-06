@@ -21,46 +21,33 @@ export default function Sacola() {
   const [pendingProducts, setPendingProducts] = useState([]);
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    async function carregarSacola() {
-      try {
-        const usuarioStr = await AsyncStorage.getItem("usuario");
-        if (!usuarioStr) return;
+  async function carregarSacola() {
+    try {
+      const usuarioStr = await AsyncStorage.getItem("usuario");
+      if (!usuarioStr) return;
 
-        const usuario = JSON.parse(usuarioStr);
-        const usuarioId = usuario.id;
-        if (!usuarioId) return;
+      const usuario = JSON.parse(usuarioStr);
+      const usuarioId = usuario.id;
+      if (!usuarioId) return;
 
-        const res = await fetch(`http://localhost:3333/sacolas/${usuarioId}`);
-        const data = await res.json();
-        const itens = data.itens || [];
+      const res = await fetch(`http://localhost:3333/sacolas/${usuarioId}`);
+      const sacola = await res.json();
 
-        const produtosCompletos = itens.map((item) => ({
-          ...item.produto,
-          quantidade: item.quantidade,
-        }));
+      const produtosCompletos = sacola.itens.map((item) => ({
+        ...item.produto,
+        quantidade: item.quantidade,
+        itemId: item.id,
+      }));
 
-        setPendingProducts(produtosCompletos);
-      } catch (error) {
-        console.error("Erro ao carregar sacola:", error);
-      }
+      setPendingProducts(produtosCompletos);
+    } catch (error) {
+      console.error("Erro ao carregar sacola:", error);
     }
+  }
 
+  useEffect(() => {
     carregarSacola();
   }, []);
-
-  useEffect(() => {
-    if (modalVisible || trackingVisible) {
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 6,
-        tension: 80,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      scaleAnim.setValue(0);
-    }
-  }, [modalVisible, trackingVisible]);
 
   useEffect(() => {
     if (trackingVisible) {
@@ -73,15 +60,36 @@ export default function Sacola() {
     }
   }, [trackingVisible]);
 
+  async function removerItemSacola(itemId) {
+    try {
+      const usuarioStr = await AsyncStorage.getItem("usuario");
+      if (!usuarioStr) return;
+
+      const usuario = JSON.parse(usuarioStr);
+      const usuarioId = usuario.id;
+
+      const response = await fetch(`http://localhost:3333/sacolas/${usuarioId}/itens/${itemId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Erro ao remover item da sacola");
+
+      console.log("Item removido com sucesso!");
+      carregarSacola();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   const paidProducts = [
     {
       id: 2,
-      nome: "Nike Air Max DN8",
-      cor: "Preto",
+      nome: "Nike Air Max Plus",
+      cor: "Azul",
       tamanho: "42",
-      preco: "949,90",
+      preco: "859,90",
       pedidoId: "00002",
-      img: require("../../../assets/products/Dn8.png"),
+      img: require("../../../assets/products/AirMaxPlus.png"),
     },
   ];
 
@@ -120,11 +128,10 @@ export default function Sacola() {
                   <Text style={styles.productName}>{product.nome}</Text>
                   <Text style={styles.productColor}>{product.descricao}</Text>
                   <View style={styles.productSize}>
-                    <Text style={styles.sizeText}>
-                      Qtd: {product.quantidade}
-                    </Text>
+                    <Text style={styles.sizeText}>Qtd: {product.quantidade}</Text>
                   </View>
                 </View>
+
                 <View style={styles.productPayment}>
                   <View style={[styles.paymentStatus, styles.pending]}>
                     <Text style={styles.paymentText}>INICIADO</Text>
@@ -135,6 +142,19 @@ export default function Sacola() {
                       {Number(product.preco || 0).toFixed(2)}
                     </Text>
                   </View>
+
+                  {/* 🔸 BOTÃO REMOVER */}
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: "#ff6961" }]}
+                    onPress={() => removerItemSacola(product.itemId)}
+                  >
+                    <Text style={[styles.actionText, { color: "#fff" }]}>
+                      REMOVER
+                    </Text>
+                    <Ionicons name="remove-circle-outline" size={20} color="#fff" />
+                  </TouchableOpacity>
+
+                  {/* 🔸 BOTÃO FINALIZAR */}
                   <TouchableOpacity
                     style={styles.actionBtn}
                     onPress={() => setModalVisible(true)}
@@ -254,7 +274,7 @@ const styles = StyleSheet.create({
     borderColor: "#9cf",
   },
   sizeText: { fontFamily: "PoppinsBold", fontSize: 12, color: "#9cf" },
-  productPayment: { alignItems: "center", gap: 4, width: "100%" },
+  productPayment: { alignItems: "center", gap: 6, width: "100%" },
   paymentStatus: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
   pending: { backgroundColor: "#1E90FF" },
   paid: { backgroundColor: "#01830c" },
