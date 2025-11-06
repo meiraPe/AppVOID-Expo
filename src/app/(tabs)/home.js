@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useFonts } from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -17,9 +17,9 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Home() {
-  console.log(localStorage.getItem("usuario"));
-
   const router = useRouter();
+  const [brands, setBrands] = useState([]);
+  const [products, setProducts] = useState([]);
 
   const [fontsLoaded] = useFonts({
     BebasNeue: require("../../../assets/fonts/BebasNeue-Regular.ttf"),
@@ -27,21 +27,25 @@ export default function Home() {
     PoppinsBold: require("../../../assets/fonts/Poppins-Bold.ttf"),
   });
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const resBrands = await fetch("http://localhost:3333/marcas");
+        const dataBrands = await resBrands.json();
+        setBrands(dataBrands);
+
+        const resProducts = await fetch("http://localhost:3333/produtos?marca=nike&destaque=true");
+        const dataProducts = await resProducts.json();
+        setProducts(dataProducts);
+      } catch (error) {
+        console.log("Erro ao buscar dados:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   if (!fontsLoaded) return null;
-
-  const products = [
-    { id: 1, name: "Air Max Plus OG", price: "R$ 999,90", image: require("../../../assets/products/AirMaxPlus.png") },
-    { id: 2, name: "Air Max DN8", price: "R$ 949,90", image: require("../../../assets/products/Dn8.png") },
-    { id: 3, name: "Dunk High", price: "R$ 699,90", image: require("../../../assets/products/Dunk.png") },
-    { id: 4, name: "Jordan 1", price: "R$ 799,90", image: require("../../../assets/products/Jordan1.png") },
-  ];
-
-  const brands = [
-    { id: 1, logo: require("../../../assets/brands/nike.png") },
-    { id: 2, logo: require("../../../assets/brands/adidas.png") },
-    { id: 3, logo: require("../../../assets/brands/jordan.png") },
-    { id: 4, logo: require("../../../assets/brands/newbalance.png") },
-  ];
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -96,15 +100,15 @@ export default function Home() {
         contentContainerStyle={styles.brandList}
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.brandCard}>
-            <Image source={item.logo} style={styles.brandLogo} resizeMode="contain" />
+            <Image source={{ uri: item.imagemUrl }} style={styles.brandLogo} resizeMode="contain" />
           </TouchableOpacity>
         )}
         keyExtractor={(item) => item.id.toString()}
       />
 
-      {/* Sneakers em destaque */}
+      {/* Produtos em destaque */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Produtos Nike em Destaque</Text>
+        <Text style={styles.sectionTitle}>Sneakers Nike em Destaque</Text>
       </View>
 
       <FlatList
@@ -120,10 +124,10 @@ export default function Home() {
             ]}
             onPress={() => router.push(`/marcas/${item.id}`)}
           >
-            <Image source={item.image} style={styles.productImage} />
+            <Image source={{ uri: item.imagem1Url }} style={styles.productImage} />
             <View style={styles.productInfo}>
-              <Text style={styles.productName}>{item.name}</Text>
-              <Text style={styles.productPrice}>{item.price}</Text>
+              <Text style={styles.productName}>{item.nome}</Text>
+              <Text style={styles.productPrice}>R$ {item.preco.toFixed(2)}</Text>
             </View>
           </Pressable>
         )}
