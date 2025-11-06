@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,27 +10,46 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Favoritos() {
   const router = useRouter();
-
-  const [favoritos, setFavoritos] = useState([
-    {
-      id: 1,
-      nome: "Nike Air Max Plus OG",
-      preco: "R$ 1.099,99",
-      img: require("../../../assets/products/AirMaxPlus.png"),
-    },
-    {
-      id: 2,
-      nome: "Nike Dunk High",
-      preco: "R$ 499,99",
-      img: require("../../../assets/products/Dunk.png"),
-    },
-  ]);
-
+  const [favoritos, setFavoritos] = useState([]);
   const [popupVisible, setPopupVisible] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [usuarioId, setUsuarioId] = useState(null);
+
+  useEffect(() => {
+    const carregarUsuario = async () => {
+      const usuario = await AsyncStorage.getItem("usuario");
+      if (usuario) {
+        const userData = JSON.parse(usuario);
+        setUsuarioId(userData.id);
+        buscarFavoritos(userData.id);
+      }
+    };
+    carregarUsuario();
+  }, []);
+
+  const buscarFavoritos = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:3333/favoritos/${id}`);
+      const data = await res.json();
+
+      // Busca os detalhes de cada produto favoritado
+      const produtosCompletos = await Promise.all(
+        data.map(async (fav) => {
+          const produtoRes = await fetch(`http://localhost:3333/produtos/${fav.produtoId}`);
+          const produtoData = await produtoRes.json();
+          return produtoData;
+        })
+      );
+
+      setFavoritos(produtosCompletos);
+    } catch (error) {
+      console.log("Erro ao buscar favoritos:", error);
+    }
+  };
 
   const mostrarPopup = () => {
     setPopupVisible(true);
@@ -49,13 +68,42 @@ export default function Favoritos() {
     });
   };
 
-  const removerFavorito = (id) => {
-    setFavoritos(favoritos.filter((item) => item.id !== id));
+  const handleCart = async (produtoId) => {
+    try {
+      const res = await fetch(`http://localhost:3333/sacolas/${usuarioId}/itens`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          produtoId: Number(produtoId),
+          quantidade: 1,
+        }),
+      });
+
+      if (res.ok) {
+        console.log("Adicionado à sacola");
+        mostrarPopup();
+      }
+    } catch (error) {
+      console.log("Erro ao adicionar à sacola:", error);
+    }
   };
 
-  const adicionarSacola = (item) => {
-    // Aqui você pode integrar sua lógica real de adicionar à sacola
-    mostrarPopup();
+  const removerFavorito = async (produtoId) => {
+    try {
+      await fetch(`http://localhost:3333/favoritos`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          usuarioId: usuarioId,
+          produtoId: produtoId,
+        }),
+      });
+
+      console.log("Removido dos favoritos");
+      setFavoritos(favoritos.filter((item) => item.id !== produtoId));
+    } catch (error) {
+      console.log("Erro ao remover favorito:", error);
+    }
   };
 
   return (
@@ -74,22 +122,31 @@ export default function Favoritos() {
       {/* Lista */}
       <ScrollView contentContainerStyle={styles.scroll}>
         {favoritos.length === 0 ? (
-          <Text style={styles.vazio}>Você ainda não tem produtos favoritados 💔</Text>
+          <Text style={styles.vazio}>
+            Você ainda não tem produtos favoritados
+          </Text>
         ) : (
           favoritos.map((item) => (
             <View key={item.id} style={styles.card}>
-              <Image source={item.img} style={styles.imagem} resizeMode="contain"/>
+              <Image
+                source={{ uri: item.imagem1Url }}
+                style={styles.imagem}
+                resizeMode="contain"
+              />
 
               <View style={styles.infoBox}>
                 <Text style={styles.nome}>{item.nome}</Text>
-                <Text style={styles.preco}>{item.preco}</Text>
+                <Text style={styles.preco}>
+                  R$ {Number(item?.preco || 0).toFixed(2)}
+                </Text>
+
 
                 <View style={styles.divisor} />
 
                 <View style={styles.acoes}>
                   <TouchableOpacity
                     style={styles.botao}
-                    onPress={() => adicionarSacola(item)}
+                    onPress={() => handleCart(item.id)}
                   >
                     <Ionicons name="bag-outline" size={18} color="#9cf" />
                     <Text style={styles.textoBotao}>Adicionar à Sacola</Text>
@@ -105,7 +162,7 @@ export default function Favoritos() {
         )}
       </ScrollView>
 
-      {/* Popup de Confirmação */}
+      {/* Popup */}
       {popupVisible && (
         <Animated.View
           style={[styles.popup, { opacity: fadeAnim, transform: [{ scale: fadeAnim }] }]}
