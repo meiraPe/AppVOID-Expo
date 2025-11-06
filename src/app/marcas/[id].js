@@ -77,7 +77,7 @@ export default function ProductPage() {
 
         if (res.ok)
           setAddedToCart(true)
-          console.log('Adicionado à sacola');
+        console.log('Adicionado à sacola');
       } else {
         const res = await fetch(`http://localhost:3333/sacolas/${usuarioId}/itens/${id}`, {
           method: "DELETE",
@@ -94,33 +94,37 @@ export default function ProductPage() {
 
   const handleFavorite = async () => {
     try {
-      if (favorite) {
-        await fetch(`http://localhost:3333/favoritos`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            usuarioId,
-            produtoId: Number(id),
-          }),
-        });
-
-        setFavorite(false);
-      } else {
-        await fetch(`http://localhost:3333/favoritos`, {
+      if (!favorite) {
+        const res = await fetch(`http://localhost:3333/favoritos`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            usuarioId,
+            usuarioId: usuarioId,
             produtoId: Number(id),
           }),
-        });
+        })
 
-        setFavorite(true);
+        if (res.ok)
+          setFavorite(true)
+        console.log('Adicionado aos favoritos')
+      } else {
+        const res = await fetch(`http://localhost:3333/favoritos`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usuarioId: usuarioId,
+            produtoId: Number(id),
+          }),
+        })
+
+        if (res.ok)
+          setFavorite(false)
+        console.log('Removido dos favoritos')
       }
     } catch (error) {
-      console.log("Erro ao atualizar favoritos:", error);
+      console.log("Erro ao atualizar favoritos:", error)
     }
-  };
+  }
 
   if (loading) {
     return (
