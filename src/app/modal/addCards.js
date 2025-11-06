@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
@@ -19,30 +20,66 @@ export default function Cartoes() {
   // -----------------------------
   // ESTADOS
   // -----------------------------
-  const [cartoes, setCartoes] = useState([
-    { id: 1, numero: "**** **** **** 1234", validade: "12/26" },
-    { id: 2, numero: "**** **** **** 5678", validade: "09/27" },
-  ]);
+  const [cartoes, setCartoes] = useState([]);
+  const [usuarioId, setUsuarioId] = useState(null);
 
   const [formVisible, setFormVisible] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
   const [removeVisible, setRemoveVisible] = useState(false);
   const [cartaoParaRemover, setCartaoParaRemover] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedCard, setSelectedCard] = useState(null);
 
-  // animações
   const fadeAnimForm = useRef(new Animated.Value(0)).current;
   const fadeAnimSuccess = useRef(new Animated.Value(0)).current;
   const fadeAnimRemove = useRef(new Animated.Value(0)).current;
   const slideAnimRemove = useRef(new Animated.Value(40)).current;
 
-  const [editMode, setEditMode] = useState(false);
-  const [selectedCard, setSelectedCard] = useState(null);
-
-  // Formulário
   const [numero, setNumero] = useState("");
-  const [validade, setValidade] = useState("");
+  const [nomeTitular, setNomeTitular] = useState("");
+  const [validadeMes, setValidadeMes] = useState("");
+  const [validadeAno, setValidadeAno] = useState("");
   const [cvv, setCvv] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  const API_URL = "http://localhost:3333/cartoes";
+
+  // -----------------------------
+  // PEGAR ID DO USUÁRIO LOGADO
+  // -----------------------------
+  useEffect(() => {
+    async function carregarUsuario() {
+      try {
+        const usuarioString = await AsyncStorage.getItem("usuario");
+        if (usuarioString) {
+          const usuario = JSON.parse(usuarioString);
+          setUsuarioId(usuario.id);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar usuário:", err);
+      }
+    }
+    carregarUsuario();
+  }, []);
+
+  // -----------------------------
+  // CARREGAR CARTÕES DO USUÁRIO
+  // -----------------------------
+  useEffect(() => {
+    async function carregarCartoes() {
+      if (!usuarioId) return;
+      try {
+        const res = await fetch(`${API_URL}/usuario/${usuarioId}`);
+        if (!res.ok) throw new Error("Erro ao buscar cartões");
+        const data = await res.json();
+        setCartoes(data);
+      } catch (err) {
+        console.error(err);
+        Alert.alert("Erro", "Não foi possível carregar os cartões.");
+      }
+    }
+    carregarCartoes();
+  }, [usuarioId]);
 
   // -----------------------------
   // ANIMAÇÕES DO MODAL DE REMOÇÃO
@@ -78,30 +115,26 @@ export default function Cartoes() {
   }, [removeVisible]);
 
   // -----------------------------
-  // ABRIR / FECHAR FORMULÁRIO
+  // FORMULÁRIO
   // -----------------------------
   const abrirPopupAdicionar = () => {
     setEditMode(false);
     setSelectedCard(null);
     setNumero("");
-    setValidade("");
+    setNomeTitular("");
+    setValidadeMes("");
+    setValidadeAno("");
     setCvv("");
     abrirForm();
   };
 
   const abrirPopupEditar = (cartao) => {
-    // debug log - remova se quiser
-    console.log("abrirPopupEditar chamado para id:", cartao.id);
-
     setEditMode(true);
     setSelectedCard(cartao);
-
-    // Remove asteriscos e espaços, mantendo apenas os dígitos finais (ex: "1234")
-    // replaceAll pode não ser suportado em algumas versões; usamos regex:
-    const apenasDigitos = cartao.numero.replace(/\*/g, "").replace(/\s+/g, "").trim();
-    setNumero(apenasDigitos); // por exemplo "1234"
-    setValidade(cartao.validade);
-    setCvv(""); // não exigiremos CVV para editar
+    setNumero(cartao.numero);
+    setNomeTitular(cartao.nomeTitular);
+    setValidadeMes(cartao.validadeMes.toString());
+    setValidadeAno(cartao.validadeAno.toString());
     abrirForm();
   };
 
@@ -124,28 +157,104 @@ export default function Cartoes() {
   };
 
   // -----------------------------
-  // REMOVER CARTÃO (abrir modal)
+  // CRIAR CARTÃO
   // -----------------------------
-  const confirmarRemocao = (cartao) => {
-    setCartaoParaRemover(cartao);
-    setRemoveVisible(true);
+  const criarCartao = async () => {
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          usuarioId,
+          numero,
+          nomeTitular,
+          validadeMes: Number(validadeMes),
+          validadeAno: Number(validadeAno),
+          codigoSeguranca: cvv,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao adicionar cartão");
+      const novo = await res.json();
+      setCartoes((prev) => [...prev, novo]);
+      mostrarPopupSucesso("Cartão adicionado com sucesso!");
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Erro", "Não foi possível adicionar o cartão.");
+    }
   };
 
-  const removerCartao = () => {
+  // -----------------------------
+  // EDITAR CARTÃO
+  // -----------------------------
+  const editarCartao = async () => {
+    try {
+      const res = await fetch(`${API_URL}/${selectedCard.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          numero,
+          nomeTitular,
+          validadeMes: Number(validadeMes),
+          validadeAno: Number(validadeAno),
+          codigoSeguranca: cvv,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao atualizar cartão");
+      const atualizado = await res.json();
+
+      setCartoes((prev) =>
+        prev.map((c) => (c.id === atualizado.id ? atualizado : c))
+      );
+      mostrarPopupSucesso("Cartão atualizado com sucesso!");
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Erro", "Não foi possível editar o cartão.");
+    }
+  };
+
+  // -----------------------------
+  // REMOVER CARTÃO
+  // -----------------------------
+  const removerCartao = async () => {
     if (!cartaoParaRemover) return;
-    setCartoes((prev) => prev.filter((c) => c.id !== cartaoParaRemover.id));
-    setRemoveVisible(false);
-    mostrarPopupSucesso("Cartão removido com sucesso!");
+    try {
+      const res = await fetch(`${API_URL}/${cartaoParaRemover.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Erro ao remover cartão");
+      setCartoes((prev) => prev.filter((c) => c.id !== cartaoParaRemover.id));
+      mostrarPopupSucesso("Cartão removido com sucesso!");
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Erro", "Não foi possível remover o cartão.");
+    } finally {
+      setRemoveVisible(false);
+    }
   };
 
   // -----------------------------
-  // POP-UP DE SUCESSO
+  // SALVAR (CRIAR OU EDITAR)
+  // -----------------------------
+  const salvarCartao = async () => {
+    if (!numero || !nomeTitular || !validadeMes || !validadeAno) {
+      Alert.alert("Atenção", "Preencha todos os campos corretamente.");
+      return;
+    }
+    if (editMode) await editarCartao();
+    else await criarCartao();
+    fecharForm();
+  };
+
+  // -----------------------------
+  // POPUP SUCESSO
   // -----------------------------
   const mostrarPopupSucesso = (msg) => {
     setSuccessMessage(msg);
     setSuccessVisible(true);
     fadeAnimSuccess.setValue(0);
-
     Animated.timing(fadeAnimSuccess, {
       toValue: 1,
       duration: 200,
@@ -159,45 +268,6 @@ export default function Cartoes() {
         }).start(() => setSuccessVisible(false));
       }, 2000);
     });
-  };
-
-  // -----------------------------
-  // SALVAR / EDITAR CARTÃO
-  // -----------------------------
-  const salvarCartao = () => {
-    // validação: se estiver editando, não exigir CVV; se sendo criado, exigir tudo
-    if (!numero || !validade || (!editMode && !cvv)) {
-      // usar Alert para erro de validação (ou pode usar seu popup)
-      Alert.alert("Atenção", "Preencha todos os campos (CVV só é exigido ao adicionar).");
-      return;
-    }
-
-    if (editMode && selectedCard) {
-      const novosCartoes = cartoes.map((c) =>
-        c.id === selectedCard.id
-          ? { ...c, numero: mascararNumero(numero), validade }
-          : c
-      );
-      setCartoes(novosCartoes);
-      mostrarPopupSucesso("Cartão atualizado com sucesso!");
-    } else {
-      const novoCartao = {
-        id: Date.now(),
-        numero: mascararNumero(numero),
-        validade,
-      };
-      setCartoes([...cartoes, novoCartao]);
-      mostrarPopupSucesso("Cartão adicionado com sucesso!");
-    }
-
-    fecharForm();
-  };
-
-  const mascararNumero = (num) => {
-    // num pode ser "1234" ou "4111222233334444"
-    const somenteDigitos = String(num).replace(/\s+/g, "");
-    const digitos = somenteDigitos.slice(-4);
-    return `**** **** **** ${digitos}`;
   };
 
   // -----------------------------
@@ -230,17 +300,23 @@ export default function Cartoes() {
         {cartoes.map((cartao) => (
           <View key={cartao.id} style={styles.card}>
             <View>
-              <Text style={styles.numero}>{cartao.numero}</Text>
-              <Text style={styles.validade}>Validade: {cartao.validade}</Text>
+              <Text style={styles.numero}>
+                **** **** **** {cartao.numero.slice(-4)}
+              </Text>
+              <Text style={styles.validade}>
+                {cartao.nomeTitular} — {cartao.validadeMes}/{cartao.validadeAno}
+              </Text>
             </View>
-
             <View style={styles.acoes}>
               <TouchableOpacity onPress={() => abrirPopupEditar(cartao)}>
                 <Ionicons name="create-outline" size={22} color="#9cf" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.deleteButton}
-                onPress={() => confirmarRemocao(cartao)}
+                onPress={() => {
+                  setCartaoParaRemover(cartao);
+                  setRemoveVisible(true);
+                }}
               >
                 <Ionicons name="trash-outline" size={20} color="#ff6b6b" />
               </TouchableOpacity>
@@ -274,7 +350,7 @@ export default function Cartoes() {
 
             <TextInput
               style={styles.input}
-              placeholder="Número do Cartão (digite os últimos ou completos)"
+              placeholder="Número do Cartão"
               placeholderTextColor="#777"
               value={numero}
               onChangeText={setNumero}
@@ -282,13 +358,27 @@ export default function Cartoes() {
             />
             <TextInput
               style={styles.input}
-              placeholder="Validade (MM/AA)"
+              placeholder="Nome do Titular"
               placeholderTextColor="#777"
-              value={validade}
-              onChangeText={setValidade}
+              value={nomeTitular}
+              onChangeText={setNomeTitular}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Validade Mês (MM)"
+              placeholderTextColor="#777"
+              value={validadeMes}
+              onChangeText={setValidadeMes}
               keyboardType="numeric"
             />
-            {/* CVV só é necessário ao adicionar novo cartão */}
+            <TextInput
+              style={styles.input}
+              placeholder="Validade Ano (AA)"
+              placeholderTextColor="#777"
+              value={validadeAno}
+              onChangeText={setValidadeAno}
+              keyboardType="numeric"
+            />
             {!editMode && (
               <TextInput
                 style={styles.input}
@@ -302,7 +392,10 @@ export default function Cartoes() {
             )}
 
             <View style={styles.popupBotoes}>
-              <TouchableOpacity style={styles.botaoCancelar} onPress={fecharForm}>
+              <TouchableOpacity
+                style={styles.botaoCancelar}
+                onPress={fecharForm}
+              >
                 <Text style={styles.textoCancelar}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.botaoSalvar} onPress={salvarCartao}>
@@ -313,16 +406,13 @@ export default function Cartoes() {
         </View>
       </Modal>
 
-      {/* MODAL DE CONFIRMAÇÃO DE REMOÇÃO */}
+      {/* MODAL CONFIRMAR REMOÇÃO */}
       <Modal transparent visible={removeVisible} animationType="none">
         <View style={styles.modalOverlay}>
           <Animated.View
             style={[
               styles.modalRemover,
-              {
-                opacity: fadeAnimRemove,
-                transform: [{ translateY: slideAnimRemove }],
-              },
+              { opacity: fadeAnimRemove, transform: [{ translateY: slideAnimRemove }] },
             ]}
           >
             <Text style={styles.modalTitulo}>Remover cartão</Text>
@@ -333,7 +423,6 @@ export default function Cartoes() {
               </Text>
               ?
             </Text>
-
             <View style={styles.modalBotoes}>
               <TouchableOpacity
                 style={styles.botaoCancelar}
@@ -352,7 +441,7 @@ export default function Cartoes() {
         </View>
       </Modal>
 
-      {/* POP-UP DE SUCESSO */}
+      {/* POPUP SUCESSO */}
       {successVisible && (
         <Animated.View
           style={[
